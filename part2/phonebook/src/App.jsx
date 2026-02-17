@@ -5,25 +5,28 @@ const App = () => {
   const [persons, setPersons] = useState([])
   const [newName, setNewName] = useState('')
   const [newNumber, setNewNumber] = useState('')
+  const [filter, setFilter] = useState('')
 
-  // FETCH DATA (2.12)
+  // Fetch persons from backend
   useEffect(() => {
     personService
       .getAll()
-      .then(response => {
-        setPersons(response.data)
+      .then(initialPersons => {
+        setPersons(initialPersons)
       })
   }, [])
 
-  // ADD / UPDATE PERSON (2.12 + 2.15)
+  // Add or update person
   const addPerson = (event) => {
     event.preventDefault()
 
-    const existingPerson = persons.find(p => p.name === newName)
+    const existingPerson = persons.find(
+      person => person.name === newName
+    )
 
     if (existingPerson) {
       const confirmUpdate = window.confirm(
-        `${newName} is already added to phonebook, replace the old number?`
+        `${newName} is already added to phonebook, replace the old number with a new one?`
       )
 
       if (confirmUpdate) {
@@ -34,36 +37,43 @@ const App = () => {
 
         personService
           .update(existingPerson.id, updatedPerson)
-          .then(response => {
+          .then(returnedPerson => {
             setPersons(
-              persons.map(p =>
-                p.id !== existingPerson.id ? p : response.data
+              persons.map(person =>
+                person.id !== existingPerson.id
+                  ? person
+                  : returnedPerson
               )
             )
             setNewName('')
             setNewNumber('')
           })
       }
-      return
-    }
+    } else {
+      const personObject = {
+        name: newName,
+        number: newNumber
+      }
 
-    const personObject = {
-      name: newName,
-      number: newNumber
+      personService
+        .create(personObject)
+        .then(returnedPerson => {
+          setPersons(persons.concat(returnedPerson))
+          setNewName('')
+          setNewNumber('')
+        })
     }
-
-    personService
-      .create(personObject)
-      .then(response => {
-        setPersons(persons.concat(response.data))
-        setNewName('')
-        setNewNumber('')
-      })
   }
 
-  // DELETE PERSON (2.14)
-  const deletePerson = (id, name) => {
-    if (window.confirm(`Delete ${name}?`)) {
+  // Delete person
+  const handleDelete = (id) => {
+    const person = persons.find(p => p.id === id)
+
+    const confirmDelete = window.confirm(
+      `Delete ${person.name}?`
+    )
+
+    if (confirmDelete) {
       personService
         .remove(id)
         .then(() => {
@@ -72,43 +82,59 @@ const App = () => {
     }
   }
 
+  const personsToShow = persons.filter(person =>
+    person.name.toLowerCase().includes(filter.toLowerCase())
+  )
+
   return (
     <div>
       <h2>Phonebook</h2>
 
+      <div>
+        filter shown with{' '}
+        <input
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+      </div>
+
+      <h3>Add a new</h3>
+
       <form onSubmit={addPerson}>
         <div>
-          name:
+          name:{' '}
           <input
             value={newName}
-            onChange={e => setNewName(e.target.value)}
+            onChange={(e) => setNewName(e.target.value)}
           />
         </div>
+
         <div>
-          number:
+          number:{' '}
           <input
             value={newNumber}
-            onChange={e => setNewNumber(e.target.value)}
+            onChange={(e) => setNewNumber(e.target.value)}
           />
         </div>
+
         <button type="submit">add</button>
       </form>
 
-      <h2>Numbers</h2>
-      <ul>
-        {persons.map(person => (
-          <li key={person.id}>
-            {person.name} {person.number}
-            <button onClick={() => deletePerson(person.id, person.name)}>
-              delete
-            </button>
-          </li>
-        ))}
-      </ul>
+      <h3>Numbers</h3>
+
+      {personsToShow.map(person => (
+        <p key={person.id}>
+          {person.name} {person.number}{' '}
+          <button onClick={() => handleDelete(person.id)}>
+            delete
+          </button>
+        </p>
+      ))}
     </div>
   )
 }
 
 export default App
+
 
 
