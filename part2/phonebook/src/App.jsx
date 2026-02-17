@@ -1,22 +1,40 @@
 import { useState, useEffect } from 'react'
 import personService from './services/persons'
+import './index.css'
+
+const Notification = ({ message, type }) => {
+  if (message === null) {
+    return null
+  }
+
+  return (
+    <div className={`notification ${type}`}>
+      {message}
+    </div>
+  )
+}
 
 const App = () => {
   const [persons, setPersons] = useState([])
   const [newName, setNewName] = useState('')
   const [newNumber, setNewNumber] = useState('')
-  const [filter, setFilter] = useState('')
+  const [notification, setNotification] = useState(null)
+  const [notificationType, setNotificationType] = useState('success')
 
-  // Fetch persons from backend
   useEffect(() => {
-    personService
-      .getAll()
-      .then(initialPersons => {
-        setPersons(initialPersons)
-      })
+    personService.getAll().then(initialPersons => {
+      setPersons(initialPersons)
+    })
   }, [])
 
-  // Add or update person
+  const showMessage = (message, type = 'success') => {
+    setNotification(message)
+    setNotificationType(type)
+    setTimeout(() => {
+      setNotification(null)
+    }, 5000)
+  }
+
   const addPerson = (event) => {
     event.preventDefault()
 
@@ -25,11 +43,10 @@ const App = () => {
     )
 
     if (existingPerson) {
-      const confirmUpdate = window.confirm(
+      if (window.confirm(
         `${newName} is already added to phonebook, replace the old number with a new one?`
-      )
+      )) {
 
-      if (confirmUpdate) {
         const updatedPerson = {
           ...existingPerson,
           number: newNumber
@@ -39,16 +56,25 @@ const App = () => {
           .update(existingPerson.id, updatedPerson)
           .then(returnedPerson => {
             setPersons(
-              persons.map(person =>
-                person.id !== existingPerson.id
-                  ? person
-                  : returnedPerson
+              persons.map(p =>
+                p.id !== existingPerson.id ? p : returnedPerson
               )
             )
             setNewName('')
             setNewNumber('')
+            showMessage(`Updated ${returnedPerson.name}`)
+          })
+          .catch(() => {
+            showMessage(
+              `Information of ${existingPerson.name} has already been removed from server`,
+              'error'
+            )
+            setPersons(
+              persons.filter(p => p.id !== existingPerson.id)
+            )
           })
       }
+
     } else {
       const personObject = {
         name: newName,
@@ -61,48 +87,26 @@ const App = () => {
           setPersons(persons.concat(returnedPerson))
           setNewName('')
           setNewNumber('')
+          showMessage(`Added ${returnedPerson.name}`)
+        })
+        .catch(() => {
+          showMessage('Failed to add person', 'error')
         })
     }
   }
-
-  // Delete person
-  const handleDelete = (id) => {
-    const person = persons.find(p => p.id === id)
-
-    const confirmDelete = window.confirm(
-      `Delete ${person.name}?`
-    )
-
-    if (confirmDelete) {
-      personService
-        .remove(id)
-        .then(() => {
-          setPersons(persons.filter(p => p.id !== id))
-        })
-    }
-  }
-
-  const personsToShow = persons.filter(person =>
-    person.name.toLowerCase().includes(filter.toLowerCase())
-  )
 
   return (
     <div>
       <h2>Phonebook</h2>
 
-      <div>
-        filter shown with{' '}
-        <input
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-        />
-      </div>
-
-      <h3>Add a new</h3>
+      <Notification
+        message={notification}
+        type={notificationType}
+      />
 
       <form onSubmit={addPerson}>
         <div>
-          name:{' '}
+          name:
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -110,7 +114,7 @@ const App = () => {
         </div>
 
         <div>
-          number:{' '}
+          number:
           <input
             value={newNumber}
             onChange={(e) => setNewNumber(e.target.value)}
@@ -122,12 +126,9 @@ const App = () => {
 
       <h3>Numbers</h3>
 
-      {personsToShow.map(person => (
+      {persons.map(person => (
         <p key={person.id}>
-          {person.name} {person.number}{' '}
-          <button onClick={() => handleDelete(person.id)}>
-            delete
-          </button>
+          {person.name} {person.number}
         </p>
       ))}
     </div>
@@ -135,6 +136,7 @@ const App = () => {
 }
 
 export default App
+
 
 
 
