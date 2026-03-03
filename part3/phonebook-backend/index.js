@@ -1,12 +1,14 @@
 const express = require('express')
 const morgan = require('morgan')
+const cors = require('cors')
 
 const app = express()
 
 // Middleware
-app.use(express.json())
+app.use(cors())               // Allow frontend (different port) to connect
+app.use(express.json())       // Parse JSON body
 
-// Morgan custom token for logging request body
+// Morgan custom token to log request body
 morgan.token('body', (request) => {
   return JSON.stringify(request.body)
 })
@@ -24,6 +26,11 @@ let persons = [
   { id: "3", name: "Dan Abramov", number: "12-43-234345" },
   { id: "4", name: "Mary Poppendieck", number: "39-23-6423122" }
 ]
+
+// Root route (optional but helpful)
+app.get('/', (req, res) => {
+  res.send('Phonebook backend is running')
+})
 
 // 3.1 GET all persons
 app.get('/api/persons', (request, response) => {
